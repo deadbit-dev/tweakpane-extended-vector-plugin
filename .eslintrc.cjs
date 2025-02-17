@@ -3,7 +3,6 @@ module.exports = {
 		'eslint:recommended',
 		'plugin:@typescript-eslint/eslint-recommended',
 		'plugin:@typescript-eslint/recommended',
-		'plugin:prettier/recommended',
 	],
 	parser: '@typescript-eslint/parser',
 	plugins: ['@typescript-eslint', 'simple-import-sort'],
@@ -12,9 +11,6 @@ module.exports = {
 		camelcase: 'off',
 		'no-unused-vars': 'off',
 		'sort-imports': 'off',
-
-		'prettier/prettier': 'error',
-		'simple-import-sort/imports': 'error',
 		'@typescript-eslint/naming-convention': [
 			'error',
 			{

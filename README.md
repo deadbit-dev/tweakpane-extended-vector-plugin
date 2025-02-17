@@ -1,9 +1,5 @@
-# Tweakpane plugin template
-Plugin template of an input binding for [Tweakpane][tweakpane].
-
-
-# For plugin developers
-TODO: Delete this section before publishing your plugin.
+# Extended Vector plugin.
+Plugin for [Tweakpane][tweakpane].
 
 
 ## Quick start
@@ -47,40 +43,12 @@ TODO: Delete this section before publishing your plugin.
 
 
 ### Browser
-```html
-<script type="module">
-  import {Pane} as Tweakpane from './tweakpane.min.js';
-  import * as TweakpaneTemplatePlugin from './tweakpane-plugin-template.min.js';
-
-  const pane = new Pane();
-  pane.registerPlugin(TweakpaneTemplatePlugin);
-</script>
-```
 
 
 ### Package
-```js
-import {Pane} from 'tweakpane';
-import * as TemplatePlugin from 'tweakpane-plugin-template';
-
-const pane = new Pane();
-pane.registerPlugin(TemplatePlugin);
-```
 
 
 ## Usage
-```js
-const params = {
-  prop: 3,
-};
-
-// TODO: Update parameters for your plugin
-pane.addInput(params, 'prop', {
-  view: 'dots',
-}).on('change', (ev) => {
-  console.log(ev.value);
-});
-```
 
 
 [tweakpane]: https://github.com/cocopon/tweakpane/

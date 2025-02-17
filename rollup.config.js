@@ -1,13 +1,13 @@
 /* eslint-env node */
 
-import Alias from '@rollup/plugin-alias';
-import {nodeResolve} from '@rollup/plugin-node-resolve';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
+import CommonJS from '@rollup/plugin-commonjs';
 import Replace from '@rollup/plugin-replace';
 import Typescript from '@rollup/plugin-typescript';
 import Autoprefixer from 'autoprefixer';
 import Postcss from 'postcss';
 import Cleanup from 'rollup-plugin-cleanup';
-import {terser as Terser} from 'rollup-plugin-terser';
+import { terser as Terser } from 'rollup-plugin-terser';
 import Sass from 'sass';
 
 import Package from './package.json';
@@ -26,21 +26,17 @@ async function compileCss() {
 
 function getPlugins(css, shouldMinify) {
 	const plugins = [
-		Alias({
-			entries: [
-				{
-					find: '@tweakpane/core',
-					replacement: './node_modules/@tweakpane/core/dist/index.js',
-				},
-			],
-		}),
 		Typescript({
 			tsconfig: 'src/tsconfig.json',
 		}),
 		nodeResolve(),
+		CommonJS({
+			include: /node_modules/,
+		}),
 		Replace({
 			__css__: css,
 			preventAssignment: false,
+			'process.env.NODE_ENV': JSON.stringify('production'),
 		}),
 	];
 	if (shouldMinify) {
@@ -55,20 +51,11 @@ function getPlugins(css, shouldMinify) {
 	];
 }
 
-function getDistName(packageName) {
-	// `@tweakpane/plugin-foobar` -> `tweakpane-plugin-foobar`
-	// `tweakpane-plugin-foobar`  -> `tweakpane-plugin-foobar`
-	return packageName
-		.split(/[@/-]/)
-		.reduce((comps, comp) => (comp !== '' ? [...comps, comp] : comps), [])
-		.join('-');
-}
-
 export default async () => {
 	const production = process.env.BUILD === 'production';
 	const postfix = production ? '.min' : '';
 
-	const distName = getDistName(Package.name);
+	const distName = 'tweakpane4-extended-vector-plugin';
 	const css = await compileCss();
 	return {
 		input: 'src/index.ts',
