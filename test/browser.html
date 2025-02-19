@@ -10,9 +10,10 @@
 	<script type="module">
 		import { Pane } from '../node_modules/tweakpane/dist/tweakpane.min.js';
 		import { Vector2, Vector3, Vector4 } from '../node_modules/three/build/three.core.js';
-		import * as ExtendedPoint3dInputPlugin from '../dist/tweakpane-plugin-template.js';
+		import * as ExtendedPoint3dInputPlugin from '../dist/tweakpane4-extended-vector-plugin.js';
 
 		const params = {
+			text: "Test",
 			vec2: new Vector2(1, 2),
 			vec3: new Vector3(0, 1, 0),
 			vec4: new Vector4(1, 3, 1, 0)
@@ -21,9 +22,10 @@
 		const pane = new Pane();
 		pane.registerPlugin(ExtendedPoint3dInputPlugin);
 
+		pane.addBinding(params, 'text');
 		pane.addBinding(params, 'vec2', {
 			view: 'input-point2d',
-			x: { disabled: true }
+			y: { inverted: true }
 		});
 		pane.addBinding(params, 'vec3', {
 			view: 'input-point3d',

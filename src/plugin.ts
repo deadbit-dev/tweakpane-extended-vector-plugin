@@ -7,30 +7,46 @@ import {
 	createPointAxis,
 	createPointDimensionParser,
 	deepMerge,
+	getSuitableKeyScale,
 	InputBindingPlugin,
+	isEmpty,
+	NumberTextInputParams,
 	parseNumber,
+	parsePickerLayout,
 	parsePointDimensionParams,
 	parseRecord,
 	Point2dInputParams,
+	Point2dYParams,
 	Point3dInputParams,
 	Point4dInputParams,
+	PointAxis,
 	PointDimensionParams,
-	PointNdConstraint
+	PointNdConstraint,
+	Tuple2
 } from '@tweakpane/core';
 
 import { Point3dObject, Point3d, Point3dAssembly } from '@tweakpane/core/dist/input-binding/point-3d/model/point-3d.js';
 import { Point4d, Point4dAssembly, Point4dObject } from '@tweakpane/core/dist/input-binding/point-4d/model/point-4d.js';
 import { Point2d, Point2dAssembly, Point2dObject } from '@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js';
-import { ExtendedPointNdController } from './controller.js';
+import { ExtendedPoint2dController, PointNdTextController } from './controller.js';
+
+// FIXME: remove updating value in disabled field
+// FIXME: position of drag line
+// TODO: move lable outside and add ability to drag on it too
+// TODO: implement picker for 2d working with disabled axis
 
 
 export interface ExtendedPointDimensionParams extends PointDimensionParams {
 	disabled: boolean;
 }
 
-export interface ExtendedPoint2dInputParams extends BaseInputParams, PointDimensionParams {
+export interface ExtendedPoint2dInputParams extends Point2dInputParams {
 	x?: ExtendedPointDimensionParams;
-	y?: ExtendedPointDimensionParams;
+	y?: ExtendedPoint2dYParams;
+}
+
+export interface ExtendedPoint2dYParams extends Point2dYParams {
+	disabled?: boolean;
 }
 
 export interface ExtendedPoint3dInputParams extends BaseInputParams, PointDimensionParams {
@@ -74,6 +90,40 @@ function writePoint2d(target: BindingTarget, value: Point2d) {
 	target.writeProperty('y', value.y);
 }
 
+function getSuitableMaxDimensionValue(params: NumberTextInputParams, rawValue: number): number {
+	if (!isEmpty(params.min) || !isEmpty(params.max)) {
+		return Math.max(Math.abs(params.min ?? 0), Math.abs(params.max ?? 0));
+	}
+
+	const step = getSuitableKeyScale(params);
+	return Math.max(Math.abs(step) * 10, Math.abs(rawValue) * 10);
+}
+
+function getSuitableMax(params: Point2dInputParams, initialValue: Point2d): number {
+	const xr = getSuitableMaxDimensionValue(
+		deepMerge(params, (params.x ?? {}) as Record<string, unknown>),
+		initialValue.x,
+	);
+	const yr = getSuitableMaxDimensionValue(
+		deepMerge(params, (params.y ?? {}) as Record<string, unknown>),
+		initialValue.y,
+	);
+	return Math.max(xr, yr);
+}
+
+function shouldInvertY(params: Point2dInputParams): boolean {
+	if (!('y' in params)) {
+		return false;
+	}
+
+	const yParams = params.y;
+	if (!yParams) {
+		return false;
+	}
+
+	return 'inverted' in yParams ? !!yParams.inverted : false;
+}
+
 export const ExtendedPoint2dInputPlugin: InputBindingPlugin<
 	Point2d,
 	Point2dObject,
@@ -87,24 +137,35 @@ export const ExtendedPoint2dInputPlugin: InputBindingPlugin<
 		}
 		const result = parseRecord<ExtendedPoint2dInputParams>(params, (p) => ({
 			...createPointDimensionParser(p),
+			expanded: p.optional.boolean,
+			picker: p.optional.custom(parsePickerLayout),
 			readonly: p.optional.constant(false),
 			x: p.optional.custom(extendedParsePointDimensionParams),
-			y: p.optional.custom(extendedParsePointDimensionParams),
+			y: p.optional.object<ExtendedPoint2dYParams & Record<string, unknown>>({
+				...createPointDimensionParser(p),
+				inverted: p.optional.boolean,
+				disabled: p.optional.boolean
+			}),
 		}));
-		return result ? { initialValue: value, params: result } : null;
+		return result
+			? {
+				initialValue: value,
+				params: result,
+			}
+			: null;
 	},
 	binding: {
-		reader: (_args) => point2dFromUnknown,
+		reader: () => point2dFromUnknown,
 		constraint: (args) => createConstraint2d(args.params, args.initialValue),
 		equals: Point2d.equals,
-		writer: (_args) => writePoint2d,
+		writer: () => writePoint2d,
 	},
 	controller: (args) => {
+		const doc = args.document;
 		const value = args.value;
 		const c = args.constraint as PointNdConstraint<Point2d>;
 		const dParams = [args.params.x, args.params.y];
-		return new ExtendedPointNdController(args.document, {
-			assembly: Point2dAssembly,
+		return new ExtendedPoint2dController(doc, {
 			axes: value.rawValue.getComponents().map((comp, i) =>
 				createPointAxis({
 					constraint: c.components[i],
@@ -114,15 +175,18 @@ export const ExtendedPoint2dInputPlugin: InputBindingPlugin<
 						(dParams[i] ?? {}) as Record<string, unknown>,
 					),
 				}),
-			),
+			) as Tuple2<PointAxis>,
+			expanded: args.params.expanded ?? false,
+			invertsY: shouldInvertY(args.params),
+			max: getSuitableMax(args.params, value.rawValue),
 			parser: parseNumber,
+			pickerLayout: args.params.picker ?? 'popup',
 			value: value,
 			params: args.params,
 			viewProps: args.viewProps,
 		});
 	},
 });
-
 
 function createConstraint3d(
 	params: Point3dInputParams,
@@ -180,7 +244,7 @@ export const ExtendedPoint3dInputPlugin: InputBindingPlugin<
 		const value = args.value;
 		const c = args.constraint as PointNdConstraint<Point3d>;
 		const dParams = [args.params.x, args.params.y, args.params.z];
-		return new ExtendedPointNdController(args.document, {
+		return new PointNdTextController(args.document, {
 			assembly: Point3dAssembly,
 			axes: value.rawValue.getComponents().map((comp, i) =>
 				createPointAxis({
@@ -259,7 +323,7 @@ export const ExtendedPoint4dInputPlugin: InputBindingPlugin<
 		const value = args.value;
 		const c = args.constraint as PointNdConstraint<Point4d>;
 		const dParams = [args.params.x, args.params.y, args.params.z, args.params.w];
-		return new ExtendedPointNdController(args.document, {
+		return new PointNdTextController(args.document, {
 			assembly: Point4dAssembly,
 			axes: value.rawValue.getComponents().map((comp, i) =>
 				createPointAxis({

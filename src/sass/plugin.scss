@@ -4,29 +4,36 @@
 .#{tp.$prefix}-extv {
 	@extend %tp-input;
 
-	&_lable {
-		position: absolute;
-		width: 100%;
-		height: calc(var(--cnt-usz) - 4px);
-		margin-left: 4px;
-		margin-top: 3px;
+	&_label {
+		margin: 3px;
 		color: var(--in-fg);
+		// font-size: 15px;
 	}
 }
 
-.tp-txtv_k {
-	width: 10px;
+.tp-txtv.tp-txtv-num .tp-txtv_i {
 	text-align: left;
 }
 
-.tp-txtv_k::before {
-	margin-left: 7px;
-}
+// .tp-txtv_k {
+// 	position: absolute;
+// 	top: 0;
+// 	left: -30%;
+// }
 
-.tp-txtv_i {
-	padding-left: 15px;
-}
-
-.tp-txtv_g {
-	padding-left: 15px;
-}
+// .tp-txtv_k::before {
+// 	background-color: var(--in-fg);
+// 	border-radius: 2px;
+// 	bottom: 0;
+// 	content: "";
+// 	height: calc(var(--cnt-usz) - 4px);
+// 	left: 90%;
+// 	margin-bottom: auto;
+// 	margin-left: -1px;
+// 	margin-top: auto;
+// 	opacity: .1;
+// 	position: absolute;
+// 	top: 0;
+// 	// transition: border-radius .1s, height .1s, transform .1s, width .1s;
+// 	width: 2px;
+// }
