@@ -89,6 +89,7 @@ export class NumberTextView implements View, InputView {
 
 		const inputElem = doc.createElement('input');
 		inputElem.classList.add(classNameN('i'));
+		inputElem.classList.add('ext');
 		inputElem.type = 'text';
 		config.viewProps.bindDisabled(inputElem);
 		this.element.appendChild(inputElem);

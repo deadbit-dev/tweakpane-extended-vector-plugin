@@ -1,6 +1,6 @@
 {
   "name": "tweakpane4-extended-vector-plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Plugin extend Vector for Tweakpane",
   "main": "dist/tweakpane4-extended-vector-plugin.js",
   "type": "module",
