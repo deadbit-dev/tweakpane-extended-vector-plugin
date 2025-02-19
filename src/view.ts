@@ -1,4 +1,4 @@
-import { ClassName, InputView, NumberTextProps, Value, ValueEvents, View, ViewProps } from "@tweakpane/core";
+import { ClassName, constrainRange, InputView, NumberTextProps, SVG_NS, Value, ValueEvents, View, ViewProps } from "@tweakpane/core";
 import { PointNdTextView } from "@tweakpane/core/dist/input-binding/common/view/point-nd-text.js";
 // import { ExtendedPoint2dInputParams, ExtendedPoint3dInputParams, ExtendedPoint4dInputParams } from "./plugin.js";
 
@@ -45,8 +45,8 @@ export class ExtendedPointNdTextView extends PointNdTextView {
 			const isW = (config.params.w && config.params.w.disabled && index == 3);
 			if (isX || isY || isZ || isW) {
 				textView.inputElement.value = '';
-				(textView.inputElement as HTMLElement).setAttribute('disabled', '');
-				// textView.knobElement.remove();
+				(textView.inputElement as HTMLElement).remove(); //setAttribute('disabled', '');
+				textView.knobElement.remove();
 			}
 		});
 	}
@@ -65,14 +65,14 @@ const classNameN = ClassName('txt');
 
 export class NumberTextView implements View, InputView {
 	public readonly inputElement: HTMLInputElement;
-	// public readonly knobElement: HTMLElement;
+	public readonly knobElement: HTMLElement;
 	public readonly element: HTMLElement;
 	public readonly value: Value<number>;
 	private readonly props_: NumberTextProps;
 	private readonly dragging_: Value<number | null>;
-	// private readonly guideBodyElem_: SVGPathElement;
-	// private readonly guideHeadElem_: SVGPathElement;
-	// private readonly tooltipElem_: HTMLElement;
+	private readonly guideBodyElem_: SVGPathElement;
+	private readonly guideHeadElem_: SVGPathElement;
+	private readonly tooltipElem_: HTMLElement;
 
 	constructor(doc: Document, config: ConfigN) {
 		this.onChange_ = this.onChange_.bind(this);
@@ -103,29 +103,29 @@ export class NumberTextView implements View, InputView {
 		this.element.classList.add(classNameN());
 		this.inputElement.classList.add(classNameN('i'));
 
-		// const knobElem = doc.createElement('div');
-		// knobElem.classList.add(classNameN('k'));
-		// this.element.appendChild(knobElem);
-		// this.knobElement = knobElem;
+		const knobElem = doc.createElement('div');
+		knobElem.classList.add(classNameN('k'));
+		this.element.appendChild(knobElem);
+		this.knobElement = knobElem;
 
-		// const guideElem = doc.createElementNS(SVG_NS, 'svg');
-		// guideElem.classList.add(classNameN('g'));
-		// this.knobElement.appendChild(guideElem);
+		const guideElem = doc.createElementNS(SVG_NS, 'svg');
+		guideElem.classList.add(classNameN('g'));
+		this.knobElement.appendChild(guideElem);
 
-		// const bodyElem = doc.createElementNS(SVG_NS, 'path');
-		// bodyElem.classList.add(classNameN('gb'));
-		// guideElem.appendChild(bodyElem);
-		// this.guideBodyElem_ = bodyElem;
+		const bodyElem = doc.createElementNS(SVG_NS, 'path');
+		bodyElem.classList.add(classNameN('gb'));
+		guideElem.appendChild(bodyElem);
+		this.guideBodyElem_ = bodyElem;
 
-		// const headElem = doc.createElementNS(SVG_NS, 'path');
-		// headElem.classList.add(classNameN('gh'));
-		// guideElem.appendChild(headElem);
-		// this.guideHeadElem_ = headElem;
+		const headElem = doc.createElementNS(SVG_NS, 'path');
+		headElem.classList.add(classNameN('gh'));
+		guideElem.appendChild(headElem);
+		this.guideHeadElem_ = headElem;
 
-		// const tooltipElem = doc.createElement('div');
-		// tooltipElem.classList.add(ClassName('tt')());
-		// this.knobElement.appendChild(tooltipElem);
-		// this.tooltipElem_ = tooltipElem;
+		const tooltipElem = doc.createElement('div');
+		tooltipElem.classList.add(ClassName('tt')());
+		this.knobElement.appendChild(tooltipElem);
+		this.tooltipElem_ = tooltipElem;
 
 		config.value.emitter.on('change', this.onChange_);
 		this.value = config.value;
@@ -141,21 +141,21 @@ export class NumberTextView implements View, InputView {
 
 		this.element.classList.add(classNameN(undefined, 'drg'));
 
-		// const x = ev.rawValue / this.props_.get('pointerScale');
-		// const aox = x + (x > 0 ? -1 : x < 0 ? +1 : 0);
-		// const adx = constrainRange(-aox, -4, +4);
-		// this.guideHeadElem_.setAttributeNS(
-		// 	null,
-		// 	'd',
-		// 	[`M ${aox + adx},0 L${aox},4 L${aox + adx},8`, `M ${x},-1 L${x},9`].join(
-		// 		' ',
-		// 	),
-		// );
-		// this.guideBodyElem_.setAttributeNS(null, 'd', `M 0,4 L${x},4`);
+		const x = ev.rawValue / this.props_.get('pointerScale');
+		const aox = x + (x > 0 ? -1 : x < 0 ? +1 : 0);
+		const adx = constrainRange(-aox, -4, +4);
+		this.guideHeadElem_.setAttributeNS(
+			null,
+			'd',
+			[`M ${aox + adx},0 L${aox},4 L${aox + adx},8`, `M ${x},-1 L${x},9`].join(
+				' ',
+			),
+		);
+		this.guideBodyElem_.setAttributeNS(null, 'd', `M 0,4 L${x},4`);
 
-		// const formatter = this.props_.get('formatter');
-		// this.tooltipElem_.textContent = formatter(this.value.rawValue);
-		// this.tooltipElem_.style.left = `${x}px`;
+		const formatter = this.props_.get('formatter');
+		this.tooltipElem_.textContent = formatter(this.value.rawValue);
+		this.tooltipElem_.style.left = `${x}px`;
 	}
 
 	public refresh(): void {

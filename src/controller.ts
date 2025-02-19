@@ -1,4 +1,4 @@
-import { connectValues, createValue, forceCast, getStepForKey, getVerticalStepKeys, isEmpty, NumberTextProps, Parser, PickerLayout, Point2dController, PointAxis, PointNdAssembly, SliderProps, Tuple2, Value, ValueController, ViewProps } from '@tweakpane/core';
+import { connectValues, createValue, forceCast, getStepForKey, getVerticalStepKeys, isEmpty, NumberTextProps, Parser, PickerLayout, Point2dController, PointAxis, PointerData, PointerHandler, PointerHandlerEvent, PointNdAssembly, SliderProps, Tuple2, Value, ValueController, ViewProps } from '@tweakpane/core';
 import { Point2d, Point2dAssembly } from '@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js';
 import { NumberTextView, ExtendedPointNdTextView } from './view.js';
 
@@ -61,15 +61,15 @@ export class NumberTextController
 	private readonly sliderProps_: SliderProps | null;
 	private readonly parser_: Parser<number>;
 	private readonly dragging_: Value<number | null>;
-	// private originRawValue_ = 0;
+	private originRawValue_ = 0;
 
 	constructor(doc: Document, config: ConfigN) {
 		this.onInputChange_ = this.onInputChange_.bind(this);
 		this.onInputKeyDown_ = this.onInputKeyDown_.bind(this);
 		this.onInputKeyUp_ = this.onInputKeyUp_.bind(this);
-		// this.onPointerDown_ = this.onPointerDown_.bind(this);
-		// this.onPointerMove_ = this.onPointerMove_.bind(this);
-		// this.onPointerUp_ = this.onPointerUp_.bind(this);
+		this.onPointerDown_ = this.onPointerDown_.bind(this);
+		this.onPointerMove_ = this.onPointerMove_.bind(this);
+		this.onPointerUp_ = this.onPointerUp_.bind(this);
 
 		this.parser_ = config.parser;
 		this.props = config.props;
@@ -89,10 +89,10 @@ export class NumberTextController
 		this.view.inputElement.addEventListener('keydown', this.onInputKeyDown_);
 		this.view.inputElement.addEventListener('keyup', this.onInputKeyUp_);
 
-		// const ph = new PointerHandler(this.view.knobElement);
-		// ph.emitter.on('down', this.onPointerDown_);
-		// ph.emitter.on('move', this.onPointerMove_);
-		// ph.emitter.on('up', this.onPointerUp_);
+		const ph = new PointerHandler(this.view.knobElement);
+		ph.emitter.on('down', this.onPointerDown_);
+		ph.emitter.on('move', this.onPointerMove_);
+		ph.emitter.on('up', this.onPointerUp_);
 	}
 
 	private constrainValue_(value: number): number {
@@ -147,47 +147,47 @@ export class NumberTextController
 		});
 	}
 
-	// private onPointerDown_() {
-	// 	this.originRawValue_ = this.value.rawValue;
-	// 	this.dragging_.rawValue = 0;
-	// }
+	private onPointerDown_() {
+		this.originRawValue_ = this.value.rawValue;
+		this.dragging_.rawValue = 0;
+	}
 
-	// private computeDraggingValue_(data: PointerData): number | null {
-	// 	if (!data.point) {
-	// 		return null;
-	// 	}
+	private computeDraggingValue_(data: PointerData): number | null {
+		if (!data.point) {
+			return null;
+		}
 
-	// 	const dx = data.point.x - data.bounds.width / 2;
-	// 	return this.constrainValue_(
-	// 		this.originRawValue_ + dx * this.props.get('pointerScale'),
-	// 	);
-	// }
+		const dx = data.point.x - data.bounds.width / 2;
+		return this.constrainValue_(
+			this.originRawValue_ + dx * this.props.get('pointerScale'),
+		);
+	}
 
-	// private onPointerMove_(ev: PointerHandlerEvent) {
-	// 	const v = this.computeDraggingValue_(ev.data);
-	// 	if (v === null) {
-	// 		return;
-	// 	}
+	private onPointerMove_(ev: PointerHandlerEvent) {
+		const v = this.computeDraggingValue_(ev.data);
+		if (v === null) {
+			return;
+		}
 
-	// 	this.value.setRawValue(v, {
-	// 		forceEmit: false,
-	// 		last: false,
-	// 	});
-	// 	this.dragging_.rawValue = this.value.rawValue - this.originRawValue_;
-	// }
+		this.value.setRawValue(v, {
+			forceEmit: false,
+			last: false,
+		});
+		this.dragging_.rawValue = this.value.rawValue - this.originRawValue_;
+	}
 
-	// private onPointerUp_(ev: PointerHandlerEvent) {
-	// 	const v = this.computeDraggingValue_(ev.data);
-	// 	if (v === null) {
-	// 		return;
-	// 	}
+	private onPointerUp_(ev: PointerHandlerEvent) {
+		const v = this.computeDraggingValue_(ev.data);
+		if (v === null) {
+			return;
+		}
 
-	// 	this.value.setRawValue(v, {
-	// 		forceEmit: true,
-	// 		last: true,
-	// 	});
-	// 	this.dragging_.rawValue = null;
-	// }
+		this.value.setRawValue(v, {
+			forceEmit: true,
+			last: true,
+		});
+		this.dragging_.rawValue = null;
+	}
 }
 
 interface ConfigNd<PointNd> {
