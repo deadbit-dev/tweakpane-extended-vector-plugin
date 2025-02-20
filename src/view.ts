@@ -1,5 +1,6 @@
-import { ClassName, constrainRange, InputView, NumberTextProps, SVG_NS, Value, ValueEvents, View, ViewProps } from "@tweakpane/core";
+import { bindValue, ClassName, constrainRange, createSvgIconElement, InputView, mapRange, NumberTextProps, PickerLayout, SVG_NS, Value, ValueEvents, ValueMap, valueToClassName, View, ViewProps } from "@tweakpane/core";
 import { PointNdTextView } from "@tweakpane/core/dist/input-binding/common/view/point-nd-text.js";
+import { Point2d } from "@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js";
 // import { ExtendedPoint2dInputParams, ExtendedPoint3dInputParams, ExtendedPoint4dInputParams } from "./plugin.js";
 
 
@@ -165,5 +166,171 @@ export class NumberTextView implements View, InputView {
 
 	private onChange_(): void {
 		this.refresh();
+	}
+}
+
+interface Config2d {
+	expanded: Value<boolean>;
+	pickerLayout?: PickerLayout;
+	viewProps: ViewProps;
+}
+
+const className2d = ClassName('p2d');
+
+export class Point2dView implements View {
+	public readonly element: HTMLElement;
+	public readonly buttonElement?: HTMLButtonElement;
+	public readonly textElement: HTMLElement;
+	public readonly pickerElement: HTMLElement | null;
+
+	constructor(doc: Document, config: Config2d) {
+		this.element = doc.createElement('div');
+		this.element.classList.add(className2d());
+		config.viewProps.bindClassModifiers(this.element);
+		bindValue(
+			config.expanded,
+			valueToClassName(this.element, className2d(undefined, 'expanded')),
+		);
+
+		const headElem = doc.createElement('div');
+		headElem.classList.add(className2d('h'));
+		this.element.appendChild(headElem);
+
+		if (config.pickerLayout) {
+			const buttonElem = doc.createElement('button');
+			buttonElem.classList.add(className2d('b'));
+			buttonElem.appendChild(createSvgIconElement(doc, 'p2dpad'));
+			config.viewProps.bindDisabled(buttonElem);
+			headElem.appendChild(buttonElem);
+			this.buttonElement = buttonElem;
+		}
+
+		const textElem = doc.createElement('div');
+		textElem.classList.add(className2d('t'));
+		headElem.appendChild(textElem);
+		this.textElement = textElem;
+
+		if (config.pickerLayout === 'inline') {
+			const pickerElem = doc.createElement('div');
+			pickerElem.classList.add(className2d('p'));
+			this.element.appendChild(pickerElem);
+			this.pickerElement = pickerElem;
+		} else {
+			this.pickerElement = null;
+		}
+	}
+}
+
+export type Point2dPickerProps = ValueMap<{
+	invertsY: boolean;
+	max: number;
+	xKeyScale: number;
+	yKeyScale: number;
+}>;
+
+interface ConfigP {
+	layout?: PickerLayout;
+	props: Point2dPickerProps;
+	value: Value<Point2d>;
+	viewProps: ViewProps;
+}
+
+const className2dP = ClassName('p2dp');
+
+export class Point2dPickerView implements View {
+	public readonly element: HTMLElement;
+	public readonly padElement: HTMLDivElement;
+	public readonly value: Value<Point2d>;
+	private readonly props_: Point2dPickerProps;
+	private readonly svgElem_: Element;
+	private readonly lineElem_: Element;
+	private readonly markerElem_: HTMLElement;
+
+	constructor(doc: Document, config: ConfigP) {
+		this.onFoldableChange_ = this.onFoldableChange_.bind(this);
+		this.onPropsChange_ = this.onPropsChange_.bind(this);
+		this.onValueChange_ = this.onValueChange_.bind(this);
+
+		this.props_ = config.props;
+		this.props_.emitter.on('change', this.onPropsChange_);
+
+		this.element = doc.createElement('div');
+		this.element.classList.add(className2dP());
+		if (config.layout === 'popup') {
+			this.element.classList.add(className2dP(undefined, 'p'));
+		}
+		config.viewProps.bindClassModifiers(this.element);
+
+		const padElem = doc.createElement('div');
+		padElem.classList.add(className2dP('p'));
+		config.viewProps.bindTabIndex(padElem);
+		this.element.appendChild(padElem);
+		this.padElement = padElem;
+
+		const svgElem = doc.createElementNS(SVG_NS, 'svg');
+		svgElem.classList.add(className2dP('g'));
+		this.padElement.appendChild(svgElem);
+		this.svgElem_ = svgElem;
+
+		const xAxisElem = doc.createElementNS(SVG_NS, 'line');
+		xAxisElem.classList.add(className2dP('ax'));
+		xAxisElem.setAttributeNS(null, 'x1', '0');
+		xAxisElem.setAttributeNS(null, 'y1', '50%');
+		xAxisElem.setAttributeNS(null, 'x2', '100%');
+		xAxisElem.setAttributeNS(null, 'y2', '50%');
+		this.svgElem_.appendChild(xAxisElem);
+
+		const yAxisElem = doc.createElementNS(SVG_NS, 'line');
+		yAxisElem.classList.add(className2dP('ax'));
+		yAxisElem.setAttributeNS(null, 'x1', '50%');
+		yAxisElem.setAttributeNS(null, 'y1', '0');
+		yAxisElem.setAttributeNS(null, 'x2', '50%');
+		yAxisElem.setAttributeNS(null, 'y2', '100%');
+		this.svgElem_.appendChild(yAxisElem);
+
+		const lineElem = doc.createElementNS(SVG_NS, 'line');
+		lineElem.classList.add(className2dP('l'));
+		lineElem.setAttributeNS(null, 'x1', '50%');
+		lineElem.setAttributeNS(null, 'y1', '50%');
+		this.svgElem_.appendChild(lineElem);
+		this.lineElem_ = lineElem;
+
+		const markerElem = doc.createElement('div');
+		markerElem.classList.add(className2dP('m'));
+		this.padElement.appendChild(markerElem);
+		this.markerElem_ = markerElem;
+
+		config.value.emitter.on('change', this.onValueChange_);
+		this.value = config.value;
+
+		this.update_();
+	}
+
+	get allFocusableElements(): HTMLElement[] {
+		return [this.padElement];
+	}
+
+	private update_(): void {
+		const [x, y] = this.value.rawValue.getComponents();
+		const max = this.props_.get('max');
+		const px = mapRange(x, -max, +max, 0, 100);
+		const py = mapRange(y, -max, +max, 0, 100);
+		const ipy = this.props_.get('invertsY') ? 100 - py : py;
+		this.lineElem_.setAttributeNS(null, 'x2', `${px}%`);
+		this.lineElem_.setAttributeNS(null, 'y2', `${ipy}%`);
+		this.markerElem_.style.left = `${px}%`;
+		this.markerElem_.style.top = `${ipy}%`;
+	}
+
+	private onValueChange_(): void {
+		this.update_();
+	}
+
+	private onPropsChange_(): void {
+		this.update_();
+	}
+
+	private onFoldableChange_(): void {
+		this.update_();
 	}
 }

@@ -28,7 +28,7 @@ import {
 import { Point3dObject, Point3d, Point3dAssembly } from '@tweakpane/core/dist/input-binding/point-3d/model/point-3d.js';
 import { Point4d, Point4dAssembly, Point4dObject } from '@tweakpane/core/dist/input-binding/point-4d/model/point-4d.js';
 import { Point2d, Point2dAssembly, Point2dObject } from '@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js';
-import { ExtendedPoint2dController, PointNdTextController } from './controller.js';
+import { Point2dController, PointNdTextController } from './controller.js';
 
 // FIXME: remove updating value in disabled field
 // FIXME: position of drag line
@@ -165,7 +165,7 @@ export const ExtendedPoint2dInputPlugin: InputBindingPlugin<
 		const value = args.value;
 		const c = args.constraint as PointNdConstraint<Point2d>;
 		const dParams = [args.params.x, args.params.y];
-		return new ExtendedPoint2dController(doc, {
+		return new Point2dController(doc, {
 			axes: value.rawValue.getComponents().map((comp, i) =>
 				createPointAxis({
 					constraint: c.components[i],
@@ -180,7 +180,7 @@ export const ExtendedPoint2dInputPlugin: InputBindingPlugin<
 			invertsY: shouldInvertY(args.params),
 			max: getSuitableMax(args.params, value.rawValue),
 			parser: parseNumber,
-			pickerLayout: args.params.picker ?? 'popup',
+			pickerLayout: args.params.picker,
 			value: value,
 			params: args.params,
 			viewProps: args.viewProps,

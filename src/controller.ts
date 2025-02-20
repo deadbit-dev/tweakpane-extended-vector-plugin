@@ -1,6 +1,6 @@
-import { connectValues, createValue, forceCast, getStepForKey, getVerticalStepKeys, isEmpty, NumberTextProps, Parser, PickerLayout, Point2dController, PointAxis, PointerData, PointerHandler, PointerHandlerEvent, PointNdAssembly, SliderProps, Tuple2, Value, ValueController, ViewProps } from '@tweakpane/core';
+import { bindFoldable, connectValues, createValue, findNextTarget, Foldable, forceCast, getHorizontalStepKeys, getStepForKey, getVerticalStepKeys, isArrowKey, isEmpty, mapRange, NumberTextProps, Parser, PickerLayout, PointAxis, PointerData, PointerHandler, PointerHandlerEvent, PointerHandlerEvents, PointNdAssembly, PopupController, SliderProps, supportsTouch, Tuple2, Value, ValueChangeOptions, ValueController, ValueMap, ViewProps } from '@tweakpane/core';
 import { Point2d, Point2dAssembly } from '@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js';
-import { NumberTextView, ExtendedPointNdTextView } from './view.js';
+import { NumberTextView, ExtendedPointNdTextView, Point2dView, Point2dPickerProps, Point2dPickerView } from './view.js';
 
 interface Config2d {
 	axes: Tuple2<PointAxis>;
@@ -8,17 +8,216 @@ interface Config2d {
 	invertsY: boolean;
 	max: number;
 	parser: Parser<number>;
-	pickerLayout: PickerLayout;
+	pickerLayout?: PickerLayout;
 	value: Value<Point2d>;
 	params: any;
 	viewProps: ViewProps;
 }
 
-export class ExtendedPoint2dController extends Point2dController {
-	private readonly extendedtextController_: PointNdTextController<Point2d>;
+// export class ExtendedPoint2dController extends Point2dController {
+// 	private readonly extendedtextController_: PointNdTextController<Point2d>;
+// 	constructor(doc: Document, config: Config2d) {
+// 		super(doc, config);
+// 		this.extendedtextController_ = new PointNdTextController(doc, {
+// 			assembly: Point2dAssembly,
+// 			axes: config.axes,
+// 			parser: config.parser,
+// 			value: this.value,
+// 			params: config.params,
+// 			viewProps: this.viewProps,
+// 		});
+// 		this.view.textElement.childNodes.forEach((node) => node.remove());
+// 		this.view.textElement.appendChild(this.extendedtextController_.view.element);
+
+// 		// remove picker button if one of axies disabled
+// 		const isX = (config.params.x && config.params.x.disabled);
+// 		const isY = (config.params.y && config.params.y.disabled);
+// 		if (isX || isY) {
+// 			this.view.buttonElement.remove();
+// 		}
+// 	}
+
+// 	get textControllers(): PointNdTextController<Point2d> {
+// 		return this.extendedtextController_;
+// 	}
+// }
+
+interface ConfigP {
+	layout?: PickerLayout;
+	props: Point2dPickerProps;
+	value: Value<Point2d>;
+	viewProps: ViewProps;
+}
+
+function computeOffset(
+	ev: KeyboardEvent,
+	keyScales: Tuple2<number>,
+	invertsY: boolean,
+): [number, number] {
+	return [
+		getStepForKey(keyScales[0], getHorizontalStepKeys(ev)),
+		getStepForKey(keyScales[1], getVerticalStepKeys(ev)) * (invertsY ? 1 : -1),
+	];
+}
+
+export class Point2dPickerController
+	implements ValueController<Point2d, Point2dPickerView> {
+	public readonly props: Point2dPickerProps;
+	public readonly value: Value<Point2d>;
+	public readonly view: Point2dPickerView;
+	public readonly viewProps: ViewProps;
+	private readonly ptHandler_: PointerHandler;
+
+	constructor(doc: Document, config: ConfigP) {
+		this.onPadKeyDown_ = this.onPadKeyDown_.bind(this);
+		this.onPadKeyUp_ = this.onPadKeyUp_.bind(this);
+		this.onPointerDown_ = this.onPointerDown_.bind(this);
+		this.onPointerMove_ = this.onPointerMove_.bind(this);
+		this.onPointerUp_ = this.onPointerUp_.bind(this);
+
+		this.props = config.props;
+		this.value = config.value;
+		this.viewProps = config.viewProps;
+
+		this.view = new Point2dPickerView(doc, {
+			layout: config.layout,
+			props: this.props,
+			value: this.value,
+			viewProps: this.viewProps,
+		});
+
+		this.ptHandler_ = new PointerHandler(this.view.padElement);
+		this.ptHandler_.emitter.on('down', this.onPointerDown_);
+		this.ptHandler_.emitter.on('move', this.onPointerMove_);
+		this.ptHandler_.emitter.on('up', this.onPointerUp_);
+
+		this.view.padElement.addEventListener('keydown', this.onPadKeyDown_);
+		this.view.padElement.addEventListener('keyup', this.onPadKeyUp_);
+	}
+
+	private handlePointerEvent_(d: PointerData, opts: ValueChangeOptions): void {
+		if (!d.point) {
+			return;
+		}
+
+		const max = this.props.get('max');
+		const px = mapRange(d.point.x, 0, d.bounds.width, -max, +max);
+		const py = mapRange(
+			this.props.get('invertsY') ? d.bounds.height - d.point.y : d.point.y,
+			0,
+			d.bounds.height,
+			-max,
+			+max,
+		);
+		this.value.setRawValue(new Point2d(px, py), opts);
+	}
+
+	private onPointerDown_(ev: PointerHandlerEvents['down']): void {
+		this.handlePointerEvent_(ev.data, {
+			forceEmit: false,
+			last: false,
+		});
+	}
+
+	private onPointerMove_(ev: PointerHandlerEvents['move']): void {
+		this.handlePointerEvent_(ev.data, {
+			forceEmit: false,
+			last: false,
+		});
+	}
+
+	private onPointerUp_(ev: PointerHandlerEvents['up']): void {
+		this.handlePointerEvent_(ev.data, {
+			forceEmit: true,
+			last: true,
+		});
+	}
+
+	private onPadKeyDown_(ev: KeyboardEvent): void {
+		if (isArrowKey(ev.key)) {
+			ev.preventDefault();
+		}
+
+		const [dx, dy] = computeOffset(
+			ev,
+			[this.props.get('xKeyScale'), this.props.get('yKeyScale')],
+			this.props.get('invertsY'),
+		);
+		if (dx === 0 && dy === 0) {
+			return;
+		}
+
+		this.value.setRawValue(
+			new Point2d(this.value.rawValue.x + dx, this.value.rawValue.y + dy),
+			{
+				forceEmit: false,
+				last: false,
+			},
+		);
+	}
+
+	private onPadKeyUp_(ev: KeyboardEvent): void {
+		const [dx, dy] = computeOffset(
+			ev,
+			[this.props.get('xKeyScale'), this.props.get('yKeyScale')],
+			this.props.get('invertsY'),
+		);
+		if (dx === 0 && dy === 0) {
+			return;
+		}
+
+		this.value.setRawValue(this.value.rawValue, {
+			forceEmit: true,
+			last: true,
+		});
+	}
+}
+
+export class Point2dController implements ValueController<Point2d, Point2dView> {
+	public readonly value: Value<Point2d>;
+	public readonly view: Point2dView;
+	public readonly viewProps: ViewProps;
+	private readonly popC_: PopupController | null;
+	private readonly pickerC_: Point2dPickerController;
+	private readonly textC_: PointNdTextController<Point2d>;
+	private readonly foldable_: Foldable;
+
 	constructor(doc: Document, config: Config2d) {
-		super(doc, config);
-		this.extendedtextController_ = new PointNdTextController(doc, {
+		this.onPopupChildBlur_ = this.onPopupChildBlur_.bind(this);
+		this.onPopupChildKeydown_ = this.onPopupChildKeydown_.bind(this);
+		this.onPadButtonBlur_ = this.onPadButtonBlur_.bind(this);
+		this.onPadButtonClick_ = this.onPadButtonClick_.bind(this);
+
+		this.value = config.value;
+		this.viewProps = config.viewProps;
+
+		this.foldable_ = Foldable.create(config.expanded);
+
+		this.popC_ =
+			config.pickerLayout === 'popup'
+				? new PopupController(doc, {
+					viewProps: this.viewProps,
+				})
+				: null;
+
+		const padC = new Point2dPickerController(doc, {
+			layout: config.pickerLayout,
+			props: new ValueMap({
+				invertsY: createValue(config.invertsY),
+				max: createValue(config.max),
+				xKeyScale: config.axes[0].textProps.value('keyScale'),
+				yKeyScale: config.axes[1].textProps.value('keyScale'),
+			}),
+			value: this.value,
+			viewProps: this.viewProps,
+		});
+		padC.view.allFocusableElements.forEach((elem: any) => {
+			elem.addEventListener('blur', this.onPopupChildBlur_);
+			elem.addEventListener('keydown', this.onPopupChildKeydown_);
+		});
+		this.pickerC_ = padC;
+
+		this.textC_ = new PointNdTextController(doc, {
 			assembly: Point2dAssembly,
 			axes: config.axes,
 			parser: config.parser,
@@ -26,21 +225,92 @@ export class ExtendedPoint2dController extends Point2dController {
 			params: config.params,
 			viewProps: this.viewProps,
 		});
-		this.view.textElement.childNodes.forEach((node) => node.remove());
-		this.view.textElement.appendChild(this.extendedtextController_.view.element);
 
-		// remove picker button if one of axies disabled
-		const isX = (config.params.x && config.params.x.disabled);
-		const isY = (config.params.y && config.params.y.disabled);
-		if (isX || isY) {
-			this.view.buttonElement.remove();
+		this.view = new Point2dView(doc, {
+			expanded: this.foldable_.value('expanded'),
+			pickerLayout: config.pickerLayout,
+			viewProps: this.viewProps,
+		});
+		this.view.textElement.appendChild(this.textC_.view.element);
+		this.view.buttonElement?.addEventListener('blur', this.onPadButtonBlur_);
+		this.view.buttonElement?.addEventListener('click', this.onPadButtonClick_);
+
+		if (this.popC_) {
+			this.view.element.appendChild(this.popC_.view.element);
+			this.popC_.view.element.appendChild(this.pickerC_.view.element);
+
+			connectValues({
+				primary: this.foldable_.value('expanded'),
+				secondary: this.popC_.shows,
+				forward: (p) => p,
+				backward: (_, s) => s,
+			});
+		} else if (this.view.pickerElement) {
+			this.view.pickerElement.appendChild(this.pickerC_.view.element);
+
+			bindFoldable(this.foldable_, this.view.pickerElement);
 		}
 	}
 
-	get textControllers(): PointNdTextController<Point2d> {
-		return this.extendedtextController_;
+	get textController(): PointNdTextController<Point2d> {
+		return this.textC_;
+	}
+
+	private onPadButtonBlur_(e: FocusEvent) {
+		if (!this.popC_) {
+			return;
+		}
+
+		const elem = this.view.element;
+		const nextTarget: HTMLElement | null = forceCast(e.relatedTarget);
+		if (!nextTarget || !elem.contains(nextTarget)) {
+			this.popC_.shows.rawValue = false;
+		}
+	}
+
+	private onPadButtonClick_(): void {
+		this.foldable_.set('expanded', !this.foldable_.get('expanded'));
+		if (this.foldable_.get('expanded')) {
+			this.pickerC_.view.allFocusableElements[0].focus();
+		}
+	}
+
+	private onPopupChildBlur_(ev: FocusEvent): void {
+		if (!this.popC_) {
+			return;
+		}
+
+		const elem = this.popC_.view.element;
+		const nextTarget = findNextTarget(ev);
+		if (nextTarget && elem.contains(nextTarget)) {
+			// Next target is in the popup
+			return;
+		}
+		if (
+			nextTarget &&
+			nextTarget === this.view.buttonElement &&
+			!supportsTouch(elem.ownerDocument)
+		) {
+			// Next target is the trigger button
+			return;
+		}
+
+		this.popC_.shows.rawValue = false;
+	}
+
+	private onPopupChildKeydown_(ev: KeyboardEvent): void {
+		if (this.popC_) {
+			if (ev.key === 'Escape') {
+				this.popC_.shows.rawValue = false;
+			}
+		} else if (this.view.pickerElement) {
+			if (ev.key === 'Escape') {
+				this.view.buttonElement?.focus();
+			}
+		}
 	}
 }
+
 
 interface ConfigN {
 	parser: Parser<number>;
