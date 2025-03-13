@@ -30,12 +30,6 @@ import { Point4d, Point4dAssembly, Point4dObject } from '@tweakpane/core/dist/in
 import { Point2d, Point2dAssembly, Point2dObject } from '@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js';
 import { Point2dController, PointNdTextController } from './controller.js';
 
-// FIXME: remove updating value in disabled field
-// FIXME: position of drag line
-// TODO: move lable outside and add ability to drag on it too
-// TODO: implement picker for 2d working with disabled axis
-
-
 export interface ExtendedPointDimensionParams extends PointDimensionParams {
 	disabled: boolean;
 }

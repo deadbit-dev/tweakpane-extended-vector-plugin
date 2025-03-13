@@ -15,7 +15,7 @@
 		const params = {
 			text: "Test",
 			number: 5,
-			vec2: new Vector2(1, 2),
+			vec2: new Vector2(0, 2),
 			vec3: new Vector3(0, 1, 0),
 			vec4: new Vector4(1, 3, 1, 0)
 		};
@@ -27,7 +27,13 @@
 		pane.addBinding(params, 'number');
 		pane.addBinding(params, 'vec2', {
 			view: 'input-point2d',
+			picker: 'popup',
 			y: { inverted: true }
+		}).on('change', (event) => {
+			console.log(event.target.controller.labelController.valueController.pickerC_?.is_changed);
+			event.target.controller.labelController.valueController.textC_.acs_.forEach((ac) => {
+				console.log(ac.is_changed);
+			});
 		});
 		pane.addBinding(params, 'vec3', {
 			view: 'input-point3d',

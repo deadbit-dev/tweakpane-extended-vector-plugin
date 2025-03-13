@@ -68,6 +68,8 @@ export class Point2dPickerController
 	public readonly viewProps: ViewProps;
 	private readonly ptHandler_: PointerHandler;
 
+	public is_changed = false;
+
 	constructor(doc: Document, config: ConfigP) {
 		this.onPadKeyDown_ = this.onPadKeyDown_.bind(this);
 		this.onPadKeyUp_ = this.onPadKeyUp_.bind(this);
@@ -113,6 +115,7 @@ export class Point2dPickerController
 	}
 
 	private onPointerDown_(ev: PointerHandlerEvents['down']): void {
+		this.is_changed = true;
 		this.handlePointerEvent_(ev.data, {
 			forceEmit: false,
 			last: false,
@@ -131,6 +134,7 @@ export class Point2dPickerController
 			forceEmit: true,
 			last: true,
 		});
+		this.is_changed = false;
 	}
 
 	private onPadKeyDown_(ev: KeyboardEvent): void {
@@ -333,6 +337,9 @@ export class NumberTextController
 	private readonly dragging_: Value<number | null>;
 	private originRawValue_ = 0;
 
+	public is_changed = false;
+	public is_drag = false;
+
 	constructor(doc: Document, config: ConfigN) {
 		this.onInputChange_ = this.onInputChange_.bind(this);
 		this.onInputKeyDown_ = this.onInputKeyDown_.bind(this);
@@ -384,7 +391,12 @@ export class NumberTextController
 
 		const parsedValue = this.parser_(value);
 		if (!isEmpty(parsedValue)) {
-			this.value.rawValue = this.constrainValue_(parsedValue);
+			this.is_changed = true;
+			this.value.setRawValue(this.constrainValue_(parsedValue), {
+				forceEmit: true,
+				last: true,
+			});
+			this.is_changed = false;
 		}
 		this.view.refresh();
 	}
@@ -397,10 +409,13 @@ export class NumberTextController
 		if (step === 0) {
 			return;
 		}
+
+		this.is_changed = true;
 		this.value.setRawValue(this.constrainValue_(this.value.rawValue + step), {
-			forceEmit: false,
+			forceEmit: true,
 			last: false,
 		});
+		this.is_changed = false;
 	}
 
 	private onInputKeyUp_(ev: KeyboardEvent): void {
@@ -411,15 +426,20 @@ export class NumberTextController
 		if (step === 0) {
 			return;
 		}
+		this.is_changed = true;
 		this.value.setRawValue(this.value.rawValue, {
 			forceEmit: true,
 			last: true,
 		});
+		this.is_changed = false;
 	}
 
 	private onPointerDown_() {
 		this.originRawValue_ = this.value.rawValue;
 		this.dragging_.rawValue = 0;
+
+		this.is_drag = true;
+		this.is_changed = true;
 	}
 
 	private computeDraggingValue_(data: PointerData): number | null {
@@ -443,6 +463,7 @@ export class NumberTextController
 			forceEmit: false,
 			last: false,
 		});
+
 		this.dragging_.rawValue = this.value.rawValue - this.originRawValue_;
 	}
 
@@ -456,6 +477,9 @@ export class NumberTextController
 			forceEmit: true,
 			last: true,
 		});
+
+		this.is_changed = false;
+		this.is_drag = false;
 		this.dragging_.rawValue = null;
 	}
 }

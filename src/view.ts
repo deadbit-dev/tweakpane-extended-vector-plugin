@@ -45,9 +45,7 @@ export class ExtendedPointNdTextView extends PointNdTextView {
 			const isZ = (config.params.z && config.params.z.disabled && index == 2);
 			const isW = (config.params.w && config.params.w.disabled && index == 3);
 			if (isX || isY || isZ || isW) {
-				textView.inputElement.value = '';
-				(textView.inputElement as HTMLElement).remove(); //setAttribute('disabled', '');
-				textView.knobElement.remove();
+				textView.inputElement.value = '-';
 			}
 		});
 	}
