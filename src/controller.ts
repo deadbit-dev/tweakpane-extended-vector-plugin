@@ -1,6 +1,7 @@
 import { bindFoldable, connectValues, createValue, findNextTarget, Foldable, forceCast, getHorizontalStepKeys, getStepForKey, getVerticalStepKeys, isArrowKey, isEmpty, mapRange, NumberTextProps, Parser, PickerLayout, PointAxis, PointerData, PointerHandler, PointerHandlerEvent, PointerHandlerEvents, PointNdAssembly, PopupController, SliderProps, supportsTouch, Tuple2, Value, ValueChangeOptions, ValueController, ValueMap, ViewProps } from '@tweakpane/core';
 import { Point2d, Point2dAssembly } from '@tweakpane/core/dist/input-binding/point-2d/model/point-2d.js';
 import { NumberTextView, ExtendedPointNdTextView, Point2dView, Point2dPickerProps, Point2dPickerView } from './view.js';
+import { cloneDeep } from 'lodash';
 
 interface Config2d {
 	axes: Tuple2<PointAxis>;
@@ -392,10 +393,14 @@ export class NumberTextController
 		const parsedValue = this.parser_(value);
 		if (!isEmpty(parsedValue)) {
 			this.is_changed = true;
-			this.value.setRawValue(this.constrainValue_(parsedValue), {
+			const rawValue = this.constrainValue_(parsedValue);
+			const tmp = cloneDeep((this.value as any).constraint_.constraints);
+			(this.value as any).constraint_.constraints = [];
+			this.value.setRawValue(rawValue, {
 				forceEmit: true,
 				last: true,
 			});
+			(this.value as any).constraint_.constraints = tmp;
 			this.is_changed = false;
 		}
 		this.view.refresh();
